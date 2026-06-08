@@ -125,6 +125,34 @@
   .save{background:linear-gradient(180deg,var(--brass),var(--brass-dim));color:#1a1408;}
   .cancel{background:transparent;color:var(--muted);border:1px solid var(--line)!important;}
   .hint{font-size:11px;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif;text-align:center;margin-top:14px;line-height:1.5;}
+
+  /* auth / login screen */
+  .authov{position:fixed;inset:0;z-index:100;
+    background:radial-gradient(120% 80% at 50% -10%, #173b2c 0%, var(--felt) 55%, #08160f 100%);
+    display:none;align-items:center;justify-content:center;padding:24px;}
+  .authov.open{display:flex;}
+  .authbox{width:100%;max-width:380px;background:linear-gradient(160deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-radius:18px;padding:26px 22px 28px;
+    box-shadow:0 10px 30px rgba(0,0,0,.45);}
+  .authbox .pip{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--brass);
+    font-family:'Helvetica Neue',Arial,sans-serif;text-align:center;}
+  .authbox h2{text-align:center;font-size:23px;font-weight:600;margin:8px 0 4px;}
+  .authbox .sub{text-align:center;color:var(--muted);font-size:12.5px;
+    font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.5;}
+  .auth-err{color:var(--red);font-size:12.5px;font-family:'Helvetica Neue',Arial,sans-serif;
+    text-align:center;min-height:16px;margin-top:12px;line-height:1.4;}
+  .auth-btn{width:100%;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:600;
+    font-family:'Helvetica Neue',Arial,sans-serif;margin-top:12px;}
+  .auth-btn:disabled{opacity:.5;}
+  .auth-btn.primary{background:linear-gradient(180deg,var(--brass),var(--brass-dim));color:#1a1408;}
+  .auth-btn.ghost{background:transparent;color:var(--brass);border:1px solid var(--brass-dim)!important;}
+  .sync-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;
+    font-family:'Helvetica Neue',Arial,sans-serif;}
+  .sync-status{font-size:11.5px;color:var(--muted);flex:1;min-width:0;line-height:1.4;}
+  .sync-status.ok{color:var(--green);} .sync-status.bad{color:var(--red);}
+  .logout-btn{background:transparent;border:1px solid var(--line);color:var(--muted);
+    border-radius:10px;padding:8px 14px;font-size:12px;
+    font-family:'Helvetica Neue',Arial,sans-serif;flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -173,6 +201,10 @@
     <div class="bk-row">
       <button class="bk-btn" id="exportBtn">&#8595;&nbsp; Esporta backup</button>
       <button class="bk-btn" id="importBtn">&#8593;&nbsp; Importa backup</button>
+    </div>
+    <div class="sync-row">
+      <span class="sync-status" id="syncStatus">Connessione al cloud&hellip;</span>
+      <button class="logout-btn" id="logoutBtn">Esci</button>
     </div>
     <input type="file" id="fileInput" accept=".json,application/json,text/plain" style="display:none">
   </div>
@@ -232,6 +264,25 @@
   </div>
 </div>
 
+<!-- Auth / login screen -->
+<div class="authov open" id="authOv">
+  <div class="authbox">
+    <div class="pip">Bankroll &#9824; Tracker</div>
+    <div id="auBoot" class="sub" style="margin-top:16px;">Verifica accesso&hellip;</div>
+    <div id="auForm" style="display:none;">
+      <h2 id="auTitle">Accedi</h2>
+      <div class="sub" id="auSub">Entra per sincronizzare i tuoi dati nel cloud.</div>
+      <label>Email</label>
+      <input type="email" id="auEmail" autocomplete="username" inputmode="email" placeholder="tua@email.com">
+      <label>Password</label>
+      <input type="password" id="auPass" autocomplete="current-password" placeholder="almeno 6 caratteri">
+      <div class="auth-err" id="auErr"></div>
+      <button class="auth-btn primary" id="auPrimary">Accedi</button>
+      <button class="auth-btn ghost" id="auToggle">Non hai un account? Registrati</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const KEY='mtt_tracker_v1';
 const fmt=n=>'\u20ac'+n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -245,6 +296,7 @@ function load(){
 }
 function save(){
   try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+  if(window.__cloudSave){ window.__cloudSave(state); }
   render();
 }
 
@@ -478,7 +530,132 @@ document.getElementById('fileInput').onchange=(e)=>{
   r.readAsText(f);
 };
 
+// --- bridge: usato dal modulo Firebase qui sotto ---
+window.__getState = ()=>state;
+window.__applyRemote = function(s){
+  state = { startBankroll:s.startBankroll, sessions:s.sessions };
+  try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+  render();
+};
+
 load(); render();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+         createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyClnlR8yYHC_U8mwQyHk6mxhoXQipCFtsE",
+  authDomain: "poker-tracker-45da3.firebaseapp.com",
+  projectId: "poker-tracker-45da3",
+  storageBucket: "poker-tracker-45da3.firebasestorage.app",
+  messagingSenderId: "832766138562",
+  appId: "1:832766138562:web:97f9f5219653a05ff6c35b"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+try{ await setPersistence(auth, browserLocalPersistence); }catch(e){}
+
+const authOv   = document.getElementById('authOv');
+const errEl    = document.getElementById('auErr');
+const statusEl = document.getElementById('syncStatus');
+let   mode     = 'login';
+
+function setStatus(txt, cls){ statusEl.textContent = txt; statusEl.className = 'sync-status' + (cls ? ' '+cls : ''); }
+
+const ERRORS = {
+  'auth/invalid-email':'Email non valida.',
+  'auth/missing-password':'Inserisci la password.',
+  'auth/missing-email':'Inserisci la tua email.',
+  'auth/weak-password':'Password troppo corta (minimo 6 caratteri).',
+  'auth/email-already-in-use':'Email già registrata. Prova ad accedere.',
+  'auth/invalid-credential':'Email o password errati.',
+  'auth/wrong-password':'Password errata.',
+  'auth/user-not-found':'Nessun account con questa email. Registrati.',
+  'auth/network-request-failed':'Niente connessione. Controlla la rete e riprova.',
+  'auth/too-many-requests':'Troppi tentativi. Riprova tra qualche minuto.'
+};
+const friendly = code => ERRORS[code] || ('Errore: ' + code);
+
+document.getElementById('auToggle').onclick = ()=>{
+  mode = mode==='login' ? 'register' : 'login';
+  errEl.textContent = '';
+  document.getElementById('auTitle').textContent   = mode==='login' ? 'Accedi' : 'Crea account';
+  document.getElementById('auSub').textContent     = mode==='login'
+      ? 'Entra per sincronizzare i tuoi dati nel cloud.'
+      : 'Scegli email e password per il tuo archivio.';
+  document.getElementById('auPrimary').textContent = mode==='login' ? 'Accedi' : 'Registrati';
+  document.getElementById('auToggle').textContent  = mode==='login'
+      ? 'Non hai un account? Registrati' : 'Hai già un account? Accedi';
+  document.getElementById('auPass').setAttribute('autocomplete', mode==='login' ? 'current-password' : 'new-password');
+};
+
+document.getElementById('auPrimary').onclick = async ()=>{
+  const email = document.getElementById('auEmail').value.trim();
+  const pass  = document.getElementById('auPass').value;
+  const btn   = document.getElementById('auPrimary');
+  errEl.textContent = '';
+  btn.disabled = true;
+  try{
+    if(mode==='login') await signInWithEmailAndPassword(auth, email, pass);
+    else               await createUserWithEmailAndPassword(auth, email, pass);
+  }catch(e){ errEl.textContent = friendly(e.code); }
+  btn.disabled = false;
+};
+
+document.getElementById('logoutBtn').onclick = ()=>{ signOut(auth); };
+
+let unsub = null;
+onAuthStateChanged(auth, async (user)=>{
+  if(unsub){ unsub(); unsub = null; }
+  document.getElementById('auBoot').style.display = 'none';
+
+  if(user){
+    authOv.classList.remove('open');
+    setStatus('Connessione…');
+    const ref = doc(db, 'users', user.uid);
+
+    // Da ora ogni salvataggio va anche sul cloud
+    window.__cloudSave = (s)=>{
+      setStatus('Salvataggio…');
+      setDoc(ref, { startBankroll:s.startBankroll, sessions:s.sessions, updatedAt:Date.now() })
+        .then(()=> setStatus('Salvato nel cloud ✓', 'ok'))
+        .catch(e=> setStatus('Errore salvataggio: '+e.code, 'bad'));
+    };
+
+    // Primo accesso senza dati sul cloud: carico su l'eventuale archivio locale
+    try{
+      const snap = await getDoc(ref);
+      if(!snap.exists()){
+        const local = window.__getState();
+        await setDoc(ref, { startBankroll:local.startBankroll, sessions:local.sessions, updatedAt:Date.now() });
+      }
+    }catch(e){ setStatus('Errore: '+e.code, 'bad'); }
+
+    // Ascolto in tempo reale: ogni cambiamento sul cloud aggiorna l'app
+    unsub = onSnapshot(ref, (snap)=>{
+      if(snap.exists()){
+        const d = snap.data();
+        if(typeof d.startBankroll==='number' && Array.isArray(d.sessions)){
+          window.__applyRemote({ startBankroll:d.startBankroll, sessions:d.sessions });
+          setStatus('Sincronizzato ✓  ·  ' + user.email, 'ok');
+        }
+      }
+    }, (e)=> setStatus('Errore sync: '+e.code, 'bad'));
+  } else {
+    window.__cloudSave = null;
+    document.getElementById('auForm').style.display = 'block';
+    authOv.classList.add('open');
+    setStatus('Non connesso', 'bad');
+  }
+});
 </script>
 </body>
 </html>
