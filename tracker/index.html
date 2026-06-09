@@ -141,6 +141,7 @@
     font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.5;}
   .auth-err{color:var(--red);font-size:12.5px;font-family:'Helvetica Neue',Arial,sans-serif;
     text-align:center;min-height:16px;margin-top:12px;line-height:1.4;}
+  .auth-err.ok{color:var(--green);}
   .auth-btn{width:100%;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:600;
     font-family:'Helvetica Neue',Arial,sans-serif;margin-top:12px;}
   .auth-btn:disabled{opacity:.5;}
@@ -159,6 +160,10 @@
   .auth-divider{display:flex;align-items:center;gap:12px;margin:18px 0 2px;color:var(--muted);
     font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;}
   .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--line);}
+  .auth-link{display:block;width:100%;background:none;border:none;color:var(--muted);
+    font-family:'Helvetica Neue',Arial,sans-serif;font-size:12.5px;margin-top:14px;
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+  .auth-link:disabled{opacity:.5;}
 </style>
 </head>
 <body>
@@ -295,6 +300,7 @@
       <div class="auth-err" id="auErr"></div>
       <button class="auth-btn primary" id="auPrimary">Accedi</button>
       <button class="auth-btn ghost" id="auToggle">Non hai un account? Registrati</button>
+      <button class="auth-link" id="auForgot" type="button">Password dimenticata?</button>
     </div>
   </div>
 </div>
@@ -561,7 +567,8 @@ load(); render();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence,
-         GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult }
+         GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+         sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -608,6 +615,7 @@ const friendly = code => ERRORS[code] || ('Errore: ' + code);
 
 document.getElementById('auToggle').onclick = ()=>{
   mode = mode==='login' ? 'register' : 'login';
+  errEl.className = 'auth-err';
   errEl.textContent = '';
   document.getElementById('auTitle').textContent   = mode==='login' ? 'Accedi' : 'Crea account';
   document.getElementById('auSub').textContent     = mode==='login'
@@ -616,6 +624,7 @@ document.getElementById('auToggle').onclick = ()=>{
   document.getElementById('auPrimary').textContent = mode==='login' ? 'Accedi' : 'Registrati';
   document.getElementById('auToggle').textContent  = mode==='login'
       ? 'Non hai un account? Registrati' : 'Hai già un account? Accedi';
+  document.getElementById('auForgot').style.display = mode==='login' ? 'block' : 'none';
   document.getElementById('auPass').setAttribute('autocomplete', mode==='login' ? 'current-password' : 'new-password');
 };
 
@@ -623,11 +632,28 @@ document.getElementById('auPrimary').onclick = async ()=>{
   const email = document.getElementById('auEmail').value.trim();
   const pass  = document.getElementById('auPass').value;
   const btn   = document.getElementById('auPrimary');
+  errEl.className = 'auth-err';
   errEl.textContent = '';
   btn.disabled = true;
   try{
     if(mode==='login') await signInWithEmailAndPassword(auth, email, pass);
     else               await createUserWithEmailAndPassword(auth, email, pass);
+  }catch(e){ errEl.textContent = friendly(e.code); }
+  btn.disabled = false;
+};
+
+// --- Recupero password via email ---
+document.getElementById('auForgot').onclick = async ()=>{
+  const email = document.getElementById('auEmail').value.trim();
+  const btn   = document.getElementById('auForgot');
+  errEl.className = 'auth-err';
+  if(!email){ errEl.textContent = 'Scrivi prima la tua email qui sopra, poi tocca di nuovo.'; return; }
+  errEl.textContent = '';
+  btn.disabled = true;
+  try{
+    await sendPasswordResetEmail(auth, email);
+    errEl.className = 'auth-err ok';
+    errEl.textContent = 'Ti abbiamo inviato un’email per reimpostare la password. Controlla anche lo spam.';
   }catch(e){ errEl.textContent = friendly(e.code); }
   btn.disabled = false;
 };
