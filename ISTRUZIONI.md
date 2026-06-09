@@ -16,8 +16,17 @@ Promemoria personale per usare, aggiornare e gestire il progetto da qualsiasi co
 ## 📱 Usare il tracker (qualsiasi dispositivo)
 
 1. Apri l'URL dell'app nel browser.
-2. **Accedi** con la tua email e password (le stesse ovunque).
+2. **Accedi** in uno di questi modi (è sempre lo stesso account, stessi dati):
+   - **Email e password**, oppure
+   - **Continua con Google**.
 3. Ritrovi tutti i dati sincronizzati in tempo reale.
+
+> Password dimenticata? Nella schermata di accesso scrivi la tua email e tocca **"Password
+> dimenticata?"**: ricevi un'email per reimpostarla (controlla anche lo spam).
+
+> ⚠️ Sull'iPhone, **dall'icona della schermata Home**, il login **Google** a volte non va
+> (limite di Safari). Se capita, entra con **email e password**: funziona sempre. Per questo
+> conviene tenere attivi entrambi i metodi e non dimenticare la password.
 
 Sull'iPhone, per l'icona a tutto schermo: Safari → **Condividi** → **Aggiungi a Home**.
 
@@ -35,12 +44,16 @@ Sull'iPhone, per l'icona a tutto schermo: Safari → **Condividi** → **Aggiung
 
 ## 🔄 Aggiornare l'app (modificare il codice)
 
-### Sul computer dove è già configurato (questo)
+### Su Windows (PC già configurato)
 1. Modifica i file nella cartella `poker-site`.
 2. Doppio click su **`aggiorna.bat`** → fa commit + push da solo.
 3. Dopo ~1 minuto l'app online è aggiornata. L'URL non cambia → i dati restano.
 
-### Comandi git manuali (equivalente del .bat)
+### Su Mac (questo computer)
+Niente `aggiorna.bat` (è solo Windows). Si pubblica con i comandi git, oppure chiedendo a
+Claude Code di farlo. Dopo ~1 minuto l'app online è aggiornata, l'URL non cambia → i dati restano.
+
+### Comandi git manuali (validi ovunque)
 ```
 git add -A
 git commit -m "descrizione modifica"
@@ -59,12 +72,13 @@ Preparazione una tantum del nuovo computer:
    git clone https://github.com/PuddinBlues/poker.git
    ```
 3. **Autenticati a GitHub** (una volta):
-   - con GitHub CLI: `gh auth login`
+   - con GitHub CLI: `gh auth login` (su Mac si installa con Homebrew: `brew install gh`)
    - oppure crea un token su https://github.com/settings/tokens e usalo quando git lo chiede.
 4. Da lì modifichi, `git push`, e GitHub Pages si aggiorna.
 
-> Nota: la cartella `poker-site` è dentro OneDrive. Se installi OneDrive con lo stesso
-> account sull'altro computer, la cartella compare già sincronizzata e puoi saltare il clone.
+> Nota: il repo può vivere in una cartella sincronizzata (su Windows **OneDrive**, su Mac
+> **iCloud Drive**). Se sull'altro computer hai lo stesso cloud con lo stesso account, la
+> cartella compare già sincronizzata e puoi saltare il clone.
 
 ---
 

@@ -4,7 +4,7 @@ Raccolta di strumenti web statici, pensati per girare da iPhone (aggiunti alla s
 
 ## App incluse
 
-- **tracker/** — MTT Bankroll Tracker. Inserimento manuale dei tornei, statistiche (ROI, ITM%, profitto, grafico bankroll), buy-in massimo consigliato (1% del bankroll), backup export/import in JSON.
+- **tracker/** — MTT Bankroll Tracker. Inserimento manuale dei tornei, statistiche (ROI, ITM%, profitto, grafico bankroll), buy-in massimo consigliato (1% del bankroll), backup export/import in JSON. Dati sincronizzati nel cloud (Firebase): accesso con **email/password** o **Google**, con **recupero password** via email.
 
 ## Deploy su GitHub Pages (da computer)
 
